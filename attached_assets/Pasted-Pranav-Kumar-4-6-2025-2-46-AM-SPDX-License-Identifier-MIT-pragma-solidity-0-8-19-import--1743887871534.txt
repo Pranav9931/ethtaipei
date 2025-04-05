@@ -1,0 +1,207 @@
+Pranav Kumar, [4/6/2025 2:46 AM]
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.19;
+
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+
+contract WorldFinance is Ownable, ReentrancyGuard {
+    using SafeERC20 for IERC20;
+
+    IERC20 public immutable WLD;
+
+    uint256 public totalLiquidity;
+    uint256 public constant APY_MIN = 3;
+    uint256 public constant APY_MAX = 5;
+    uint256 public constant LOCK_PERIOD = 30 days;
+
+    struct Stake {
+        uint256 amount;
+        uint256 start;
+        uint256 apy;
+    }
+
+    struct BorrowMetadata {
+        uint256 loanAmount;
+        uint256 interestRate;
+        uint256 startTimestamp;
+        uint256 duration;
+        uint256 monthsPaid;
+        string collateralType;
+        uint256 collateralTokenId;
+        address collateralContractAddress;
+        string collateralContractChain;
+        bool isVerified;
+        bool isActive;
+    }
+
+    mapping(address => Stake) public stakes;
+    mapping(address => BorrowMetadata) public borrowings;
+
+    event Staked(address indexed user, uint256 amount, uint256 apy);
+    event Unstaked(address indexed user, uint256 amount);
+    event CollateralSubmitted(address indexed user);
+    event CollateralVerified(address indexed user, bool verified);
+    event LoanIssued(address indexed user, uint256 amount);
+    event MonthlyInterestPaid(address indexed user, uint256 amount);
+    event LoanRepaid(address indexed user, uint256 totalAmount);
+    event LiquidityAdded(address indexed owner, uint256 amount);
+    event LiquidityRemoved(address indexed owner, uint256 amount);
+
+    constructor(address _wld) Ownable(msg.sender) {
+        WLD = IERC20(_wld);
+        totalLiquidity = 0;
+    }
+
+    // --- Staking Logic ---
+
+    function stake(uint256 _amount) external nonReentrant {
+        require(_amount > 0, "Cannot stake zero");
+        require(stakes[msg.sender].amount == 0, "Already staked");
+
+        uint256 apy = APY_MIN + (block.timestamp % (APY_MAX - APY_MIN + 1));
+        stakes[msg.sender] = Stake(_amount, block.timestamp, apy);
+
+        WLD.safeTransferFrom(msg.sender, address(this), _amount);
+        totalLiquidity += _amount;
+
+        emit Staked(msg.sender, _amount, apy);
+    }
+
+    function unstake() external nonReentrant {
+        Stake storage s = stakes[msg.sender];
+        require(s.amount > 0, "No stake found");
+        require(block.timestamp >= s.start + LOCK_PERIOD, "Lock-in not complete");
+
+        uint256 duration = block.timestamp - s.start;
+        uint256 reward = (s.amount * s.apy * duration) / (100 * 365 days);
+        uint256 totalReturn = s.amount + reward;
+
+        delete stakes[msg.sender];
+        totalLiquidity -= totalReturn;
+
+        WLD.safeTransfer(msg.sender, totalReturn);
+        emit Unstaked(msg.sender, totalReturn);
+    }
+
+    // --- Borrowing Logic ---
+
+    function submitCollateral(
+        string memory _collateralType,
+        uint256 _tokenId,
+        address _contractAddr,
+        string memory _chain
+    ) external {
+        require(borrowings[msg.sender].loanAmount == 0, "Active loan exists");
+
+        borrowings[msg.sender] = BorrowMetadata({
+            loanAmount: 0,
+            interestRate: 10,
+            startTimestamp: 0,
+            duration: 0,
+            monthsPaid: 0,
+            collateralType: _collateralType,
+            collateralTokenId: _tokenId,
+            collateralContractAddress: _contractAddr,
+            collateralContractChain: _chain,
+            isVerified: false,
+            isActive: false
+        });
+
+        emit CollateralSubmitted(msg.sender);
+    }
+
+    function verifyCollateral(address _user, bool _verified) external onlyOwner {
+        BorrowMetadata storage b = borrowings[_user];
+        require(!b.isActive, "Loan already active");
+        require(b.collateralTokenId != 0, "No collateral submitted");
+
+        b.isVerified = _verified;
+        emit CollateralVerified(_user, _verified);
+    }
+
+Pranav Kumar, [4/6/2025 2:46 AM]
+function issueLoan(address _user, uint256 _amount, uint256 _duration) external onlyOwner {
+        BorrowMetadata storage b = borrowings[_user];
+        require(b.isVerified, "Collateral not verified");
+        require(!b.isActive, "Loan already active");
+        require(_amount <= totalLiquidity, "Insufficient pool liquidity");
+
+        b.loanAmount = _amount;
+        b.startTimestamp = block.timestamp;
+        b.duration = _duration;
+        b.isActive = true;
+
+        totalLiquidity -= _amount;
+        WLD.safeTransfer(_user, _amount);
+
+        emit LoanIssued(_user, _amount);
+    }
+
+    function payMonthlyInterest() external nonReentrant {
+        BorrowMetadata storage b = borrowings[msg.sender];
+        require(b.isActive, "No active loan");
+
+        uint256 elapsedMonths = (block.timestamp - b.startTimestamp) / 30 days;
+        require(elapsedMonths >= b.monthsPaid + 1, "Current month's interest already paid");
+
+        uint256 interest = (b.loanAmount * b.interestRate) / (100 * 12);
+        WLD.safeTransferFrom(msg.sender, address(this), interest);
+
+        totalLiquidity += interest;
+        b.monthsPaid += 1;
+
+        emit MonthlyInterestPaid(msg.sender, interest);
+    }
+
+    function repayLoan() external nonReentrant {
+        BorrowMetadata storage b = borrowings[msg.sender];
+        require(b.isActive, "No active loan");
+        uint256 months = b.duration / 30 days;
+        require((block.timestamp - b.startTimestamp) >= b.duration, "Loan not matured");
+
+        uint256 remainingMonths = months - b.monthsPaid;
+        uint256 remainingInterest = (b.loanAmount * b.interestRate * remainingMonths) / (100 * 12);
+        uint256 totalPayable = b.loanAmount + remainingInterest;
+
+        b.isActive = false;
+        WLD.safeTransferFrom(msg.sender, address(this), totalPayable);
+
+        totalLiquidity += totalPayable;
+        emit LoanRepaid(msg.sender, totalPayable);
+    }
+
+    // --- Liquidity Management ---
+
+    function addLiquidity(uint256 _amount) external onlyOwner {
+        WLD.safeTransferFrom(msg.sender, address(this), _amount);
+        totalLiquidity += _amount;
+        emit LiquidityAdded(msg.sender, _amount);
+    }
+
+    function removeLiquidity(uint256 _amount) external onlyOwner {
+        require(totalLiquidity >= _amount, "Insufficient liquidity");
+        WLD.safeTransfer(msg.sender, _amount);
+        totalLiquidity -= _amount;
+        emit LiquidityRemoved(msg.sender, _amount);
+    }
+
+    // --- Admin ---
+
+    function withdrawTokens(uint256 _amount) external onlyOwner {
+        WLD.safeTransfer(owner(), _amount);
+        totalLiquidity -= _amount;
+    }
+
+    // --- Getters for Stakes and Borrowings ---
+
+    function getStake(address _user) external view returns (Stake memory) {
+        return stakes[_user];
+    }
+
+    function getBorrowing(address _user) external view returns (BorrowMetadata memory) {
+        return borrowings[_user];
+    }
+}
