@@ -16,8 +16,29 @@
 
   --global-padding-vr: 20px;
   --global-padding-hr: 20px;
+  --main-font: "Space Grotesk", sans-serif;
 }
 
 body {
   margin: 0;
 }
+
+/* Add this to your global styles or a CSS module */
+.swiper .swiper-slide {
+  background-color: rgba(0, 0, 0, 0.2); /* Cards in the back */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 15px; /* Optional: Adds rounded corners */
+  transition: background-color 0.3s ease-in-out; /* Smooth transition */
+}
+
+.swiper .swiper-slide.swiper-slide-active {
+  background-color: black; /* Card in front */
+  color: white;
+}
+
+.swiper .swiper-slide h3 {
+  color: white; /* Text color inside the card */
+}
+
