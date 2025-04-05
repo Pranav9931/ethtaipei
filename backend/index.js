@@ -84,4 +84,7 @@ app.post("/tokenize", upload.single("asset"), async (req, res) => {
 });
 
 // ============ SERVER START ============
-app.listen(port, () => console.log(`Server running on port ${port}`));
+app.listen(port, () => {
+  console.log(`Server running on port ${port}`);
+  require('./stakeMonitor');
+});
