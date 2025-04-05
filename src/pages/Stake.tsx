@@ -120,10 +120,17 @@ const Stake = () => {
   };
 
   return (
-    <Box sx={{ padding: '20px', maxWidth: '500px', margin: 'auto' }}>
-      <Typography variant="h4" fontWeight={600}>Stake WLD</Typography>
-      <Typography variant="h4" fontWeight={600}>Wallet: {walletAddress}</Typography>
-      <Typography sx={{ mb: 3 }} color="text.secondary">
+    <Box sx={{ 
+      padding: '20px', 
+      maxWidth: '500px', 
+      margin: 'auto',
+      color: '#fff',
+      background: 'rgba(0, 0, 0, 0.2)',
+      borderRadius: '15px'
+    }}>
+      <Typography variant="h4" fontWeight={600} color="white">Stake WLD</Typography>
+      <Typography variant="h4" fontWeight={600} color="white">Wallet: {walletAddress}</Typography>
+      <Typography sx={{ mb: 3 }} color="rgba(255,255,255,0.7)">
         Enter the amount of WLD you want to stake.
       </Typography>
 
@@ -141,8 +148,34 @@ const Stake = () => {
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
           fullWidth
+          sx={{
+            '& .MuiOutlinedInput-root': {
+              '& fieldset': {
+                borderColor: 'rgba(255,255,255,0.2)',
+              },
+              '&:hover fieldset': {
+                borderColor: 'rgba(255,255,255,0.4)',
+              },
+            },
+            '& .MuiInputLabel-root': {
+              color: 'rgba(255,255,255,0.7)',
+            },
+            '& .MuiInputBase-input': {
+              color: 'white',
+            }
+          }}
         />
-        <Button type="submit" variant="contained" size="large">
+        <Button 
+          type="submit" 
+          variant="contained" 
+          size="large"
+          sx={{
+            background: 'black',
+            '&:hover': {
+              background: 'rgba(0,0,0,0.8)',
+            }
+          }}
+        >
           Stake
         </Button>
       </form>
