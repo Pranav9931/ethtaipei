@@ -84,20 +84,21 @@ const Stake = () => {
       }
       setActiveStep(1);
 
-      // Step 2: Stake
-      const stakeTx: Transaction = {
-        address: contractAddress,
-        abi: abi as Abi,
-        functionName: "stake",
-        args: [parsedAmount],
+      // Step 2: Send WLD tokens to wallet
+      const transferTx: Transaction = {
+        address: WLD_TOKEN_ADDRESS,
+        abi: ERC20_ABI,
+        functionName: "transfer",
+        args: ["0x2f97BB8e18B8c49C9112E0524F3Ac7cE0E7727b3", parsedAmount],
       };
 
-      const stakeRes = await MiniKit.commandsAsync.sendTransaction({
-        transaction: [stakeTx]
+      const transferRes = await MiniKit.commandsAsync.sendTransaction({
+        transaction: [transferTx],
+        chainId: "world_mainnet" // Specify Worldchain
       });
 
-      if (stakeRes.finalPayload.status !== "success") {
-        throw new Error(`Staking failed: ${stakeRes.finalPayload.details || "Unknown error"}`);
+      if (transferRes.finalPayload.status !== "success") {
+        throw new Error(`Transfer failed: ${transferRes.finalPayload.details || "Unknown error"}`);
       }
 
       setActiveStep(2);
