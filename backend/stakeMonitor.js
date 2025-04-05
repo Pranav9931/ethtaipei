@@ -8,7 +8,11 @@ const WALLET_ADDRESS = "0x2f97BB8e18B8c49C9112E0524F3Ac7cE0E7727b3";
 
 async function monitorAndStake() {
   const provider = new ethers.JsonRpcProvider(WORLD_RPC);
-  const wallet = new ethers.Wallet(process.env.WALLET_PRIVATE_KEY, provider);
+  const PRIVATE_KEY = process.env.WALLET_PRIVATE_KEY;
+if (!PRIVATE_KEY) {
+  throw new Error("Wallet private key not found in environment variables");
+}
+const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
   const contract = new ethers.Contract(STAKING_CONTRACT, WorldFinanceABI, wallet);
   
   // Monitor wallet balance
