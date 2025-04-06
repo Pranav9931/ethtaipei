@@ -16,6 +16,7 @@
     "@mui/styled-engine-sc": "^7.0.1",
     "@phosphor-icons/react": "^2.1.7",
     "@worldcoin/minikit-react": "^1.8.0",
+    "axios": "^1.8.4",
     "dotenv": "^16.4.7",
     "ethers": "^6.13.5",
     "framer-motion": "^12.6.3",

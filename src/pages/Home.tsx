@@ -1,6 +1,5 @@
-import { Box } from '@mui/material'
+import { Box, Button, Paper, Table, TableBody, TableCell, TableHead, TableRow } from '@mui/material';
 import { MiniKit } from '@worldcoin/minikit-js';
-import { Button } from '@mui/material';
 
 import { Money, Cardholder, CurrencyEth, Coins } from "@phosphor-icons/react";
 
@@ -8,8 +7,9 @@ import { Swiper, SwiperSlide } from 'swiper/react';
 import 'swiper/css';
 import 'swiper/css/effect-cards';
 import { EffectCards } from 'swiper/modules';
+
 import styled from 'styled-components';
-import { Logo } from '../assets';
+import { Logo, SliderImage } from '../assets';
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 
@@ -35,23 +35,52 @@ const WidgetCard = styled.div`
   padding: 20px;
   border-radius: 10px;
   font-size: 10px;
+  font-family: var(--main-font);
+  cursor: pointer;
+  transition: background 0.3s ease;
+
+  &:hover {
+    background: #00000020;
+  }
 `
 
 const TransactionHistoryTab = styled.div`
   display: flex;
+  margin-top: 30px;
+  margin-bottom: 10px;
+  font-weight: bold;
+  font-size: 16px;
+  font-family: var(--main-font);
 `
 
 function generateNonce() {
-    return Math.random().toString(36).substring(2) + Date.now().toString(36);
-  }
+  return Math.random().toString(36).substring(2) + Date.now().toString(36);
+}
+
+const transactionTypes = ['STAKE', 'BORROW', 'REPAYMENT', 'REWARD'];
+const statuses = ['Success', 'Pending', 'Failed'];
+
+const generateDummyTransactions = () => {
+  return Array.from({ length: 25 }).map(() => {
+    const txHash = '0x' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    const type = transactionTypes[Math.floor(Math.random() * transactionTypes.length)];
+    const status = statuses[Math.floor(Math.random() * statuses.length)];
+    const date = new Date(Date.now() - Math.floor(Math.random() * 1e10)).toLocaleDateString();
+    return {
+      hash: txHash,
+      type,
+      status,
+      date,
+    };
+  });
+};
 
 const Home = () => {
-
-    const navigate = useNavigate();
+  const navigate = useNavigate();
 
   const [userAddress, setUserAddress] = useState<null | string>(null);
-
   const [addressShort, setAddressShort] = useState<string>('0x41..46b0');
+  const transactions = generateDummyTransactions();
 
   useEffect(() => {
     if (userAddress && userAddress.length > 0) {
@@ -63,10 +92,7 @@ const Home = () => {
 
   const handleConnectWallet = async () => {
     try {
-      // Generate a nonce on the frontend for now
       const nonce = generateNonce();
-
-      // Perform wallet authentication
       const data = await MiniKit.commandsAsync.walletAuth({
         nonce,
         statement: 'Sign in to access the app',
@@ -80,10 +106,10 @@ const Home = () => {
       console.error('Wallet connection failed:', error);
     }
   };
-    
+
   return (
     <>
-        <Box
+      <Box
         sx={{
           display: 'flex',
           justifyContent: 'space-between',
@@ -101,6 +127,7 @@ const Home = () => {
               color: 'white',
               borderRadius: '10px',
               textTransform: 'uppercase',
+              fontFamily: 'var(--main-font)',
             }}
           >
             {addressShort}
@@ -124,36 +151,43 @@ const Home = () => {
           margin: '20px 0'
         }}
       >
-        <SwiperSlide style={{height: '250px'}} className="card">Slide 1</SwiperSlide>
-        <SwiperSlide style={{height: '250px'}} className="card">Slide 2</SwiperSlide>
-        <SwiperSlide style={{height: '250px'}} className="card">Slide 3</SwiperSlide>
+        <SwiperSlide style={{ height: '250px' }} className="card">
+          <img src={SliderImage} />
+        </SwiperSlide>
+        <SwiperSlide style={{ height: '250px' }} className="card">
+          <img src={SliderImage} />
+        </SwiperSlide>
+        <SwiperSlide style={{ height: '250px' }} className="card">
+          <img src={SliderImage} />
+        </SwiperSlide>
       </Swiper>
 
       <Box sx={{
         display: 'flex',
         gap: '10px',
-        marginBottom: '10px'
+        marginBottom: '10px',
+        fontFamily: 'var(--main-font)'
       }}>
         <Box sx={{
           display: 'flex',
           flexDirection: 'column',
-          background: '#e6f5f9', 
+          background: '#e6f5f9',
           padding: '10px',
           borderRadius: '10px',
           flex: 1
         }}>
-          {/* #eefcef */}
           <span>STAKED</span>
           <span style={{
             fontSize: '32px',
-            fontWeight: '800'
+            fontWeight: '800',
+            fontFamily: 'var(--main-font)'
           }}>ETH 1</span>
         </Box>
 
         <Box sx={{
           display: 'flex',
           flexDirection: 'column',
-          background: '#eefcef', 
+          background: '#eefcef',
           padding: '10px',
           borderRadius: '10px',
           flex: 1
@@ -161,7 +195,8 @@ const Home = () => {
           <span>LOANED</span>
           <span style={{
             fontSize: '32px',
-            fontWeight: '800'
+            fontWeight: '800',
+            fontFamily: 'var(--main-font)'
           }}>ETH 20</span>
         </Box>
       </Box>
@@ -189,10 +224,35 @@ const Home = () => {
       </WidgetWrapper>
 
       <TransactionHistoryTab>
-        <h3>TRANSACTION HISTORY</h3>
+        TRANSACTION HISTORY
       </TransactionHistoryTab>
-    </>
-  )
-}
 
-export default Home
+      <Paper sx={{ width: '100%', overflowX: 'auto' }}>
+        <Table sx={{ fontFamily: 'var(--main-font)' }}>
+          <TableHead>
+            <TableRow>
+              <TableCell sx={{ fontFamily: 'var(--main-font)' }}>Tx Hash</TableCell>
+              <TableCell sx={{ fontFamily: 'var(--main-font)' }}>Type</TableCell>
+              <TableCell sx={{ fontFamily: 'var(--main-font)' }}>Status</TableCell>
+              <TableCell sx={{ fontFamily: 'var(--main-font)' }}>Date</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {transactions.map((tx, idx) => (
+              <TableRow key={idx}>
+                <TableCell sx={{ fontFamily: 'var(--main-font)' }}>
+                  {tx.hash.slice(0, 6) + '...' + tx.hash.slice(-4)}
+                </TableCell>
+                <TableCell sx={{ fontFamily: 'var(--main-font)' }}>{tx.type}</TableCell>
+                <TableCell sx={{ fontFamily: 'var(--main-font)' }}>{tx.status}</TableCell>
+                <TableCell sx={{ fontFamily: 'var(--main-font)' }}>{tx.date}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Paper>
+    </>
+  );
+};
+
+export default Home;

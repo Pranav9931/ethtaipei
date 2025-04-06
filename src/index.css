@@ -34,8 +34,13 @@ body {
 }
 
 .swiper .swiper-slide.swiper-slide-active {
-  background-color: black; /* Card in front */
+  background-color: transparent; /* Card in front */
+  object-fit: cover;
   color: white;
+
+  img {
+    border-radius: 10px;
+  }
 }
 
 .swiper .swiper-slide h3 {
